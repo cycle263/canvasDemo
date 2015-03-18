@@ -2,276 +2,307 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>Drawing Lines with Rubber Bands</title>
+        <title>Rubber bands with layered elements</title>
         <style>
-            body{background: :#eee;}
-            #controls{position:absolute;left:25px;top: 25px;border:1px solid #ccc;padding: 12px;}
-            #canvas{background:#fff;cursor: pointer;margin-left: 10px;margin-left: 10px;box-shadow: 4px 4px 8px rgba(0,0,0,0.5);}
+            body{
+                background: rgba(100, 145, 250, 0.3);                
+            }
+            #myCanvas,.snapshotImage{
+                position: absolute;
+                left: 12px;
+                top: 4em;
+                border: thin solid #aaa;
+            }
+            #controls{
+                margin: 20px 0 20px 20px;
+            }
+            #rubberbandDiv{
+                position: absolute;
+                border: 3px solid blue;
+                cursor: crosshair;
+                z-index: 1;
+                display: none;
+            }
+            #eraserEle{
+                position: absolute;                
+                border: 1px solid #ccc;
+                z-index: 1;
+                display: none;
+            }
         </style>
     </head>
     <body>
-        <canvas id="myCanvas" width="600" height="400">本浏览器不支持canvas</canvas>
         <div id="controls">
-            <label>Stroke color:<select id="strokeSelect">
-                <option value="red">red</option>
-                <option value="green">green</option>
-                <option value="orange">orange</option>
-                <option value="blue">blue</option>
-                <option value="cornflowerblue" selected>cornflowerblue</option>
-                <option value="goldenrod">goldenrod</option>
-                <option value="navy">navy</option>
-                <option value="purple">purple</option>
-            </select></label>
-            <label>Fill color:<select id="fillColorSelect">
-                <option value="red">red</option>
-                <option value="green">green</option>
-                <option value="orange" selected>orange</option>
-                <option value="blue">blue</option>
-                <option value="cornflowerblue">cornflowerblue</option>
-                <option value="goldenrod">goldenrod</option>
-                <option value="navy">navy</option>
-                <option value="purple">purple</option>
-            </select></label>
-            <label>Guidewires: <input id="guidewireCheckbox" type="checkbox" checked="checked" /></label>
-            <label>Shape type:<select id="shapeType">
-                <option value="line">line</option>
-                <option value="dashed">dashed</option>
-                <option value="circle">circle</option>
-                <option value="corner" selected>corner</option>
-            </select></label>
-            <label>Filled: <input id="fillCheckbox" type="checkbox" checked="checked" /></label>
-            <input id="eraseAllButton" type="button" value="Erase all" />
+            <input type="button" id="resetButton" value="Reset" />
+            <input type="button" class="snapshotBtn" value="Take Snapshot" />
+            <input type="button" class="eraserBtn" value="Eraser Button" />
+            <input type="button" class="restoreBtn" value="Restore Button" />
         </div>
+        <img class="snapshotImage" alt="">
+        <div id="rubberbandDiv"></div>
+        <div id="eraserEle"></div>
+        <canvas id="myCanvas" width="800" height="520">Canvas not supported</canvas>
         <script>
         (function(){
-            var doc = document,
-                docEle = document.body,
-                canvas = doc.getElementById('myCanvas'),
-                guidewireCheckbox = doc.getElementById('guidewireCheckbox'),
-                fillCheckbox = doc.getElementById('fillCheckbox'),
-                shapeType = doc.getElementById('shapeType'),
-                fillColorSelect = doc.getElementById('fillColorSelect'),
-                eraseAllButton = doc.getElementById('eraseAllButton'),
-                strokeSelect = doc.getElementById('strokeSelect'),
-                gtx = canvas.getContext('2d');
-
-            function RubberDrawing(){
-                this.init();
+            function Rubberband(){
+                this.dragging = false;
             }
-            RubberDrawing.prototype = {
-                constructor: RubberDrawing,
-                drawingSurfaceImageData: {},
-                rubberbandRect: {},
+            Rubberband.prototype = {
+                constructor: Rubberband,
+                canvas: document.getElementById('myCanvas'),
+                gtx: document.getElementById('myCanvas').getContext('2d'),          
+                resetBtn: document.getElementById('resetButton'),
+                rubberbandEle: document.getElementById('rubberbandDiv'),
+                snapshotBtn: document.getElementsByClassName('snapshotBtn')[0],
+                snapshotImageEle: document.getElementsByClassName('snapshotImage')[0],
+                image: new Image(),
                 mousedown: {},
-                status: {},
-                init: function(){
-                    var that = this;
-                    gtx.strokeStyle = strokeSelect.value;
-                    gtx.fillStyle = fillColorSelect.value;
-                    this.status.guidewires = guidewireCheckbox.checked;
-                    this.status.isFill = fillCheckbox.checked;
-                    this.status.shapeType = shapeType.value;
+                rubberbandRectangle: {},
 
-                    canvas.addEventListener('mousedown', function(event){
+                /********  事件绑定  *******/
+                _init: function(){
+                    var that = this,
+                    docEle = document.body;
+                    this.image.src = 'Sea.jpg';
+
+                    this.image.onload = function(){
+                        that.gtx.drawImage(that.image, 0, 0, that.canvas.width, that.canvas.height);
+                    };
+
+                    /*this.canvas.addEventListener('mousedown', function(event){
                         event.preventDefault();
-                        var loc = that._winToCanvas(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
-                        that._saveDrawingSurface();
-                        that._updateMousedownData(loc);
-                        that.status.dragging = true;
-                    });
+                        that._rubberbandStart(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
+                    }, false);
 
-                    canvas.addEventListener('mousemove', function(event){
-                        var loc;
-                        if(that.status.dragging){
-                            event.preventDefault();
-                            loc = that._winToCanvas(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
-                            that._restoreDrawingSurface();
-                            that._updateRubberband(loc, that.status.shapeType);
-                            if(that.status.guidewires){
-                                that._drawGuidewires(loc.x, loc.y);
-                            }
+                    this.canvas.onmousemove = function(event){
+                        event.preventDefault();
+                        if(that.dragging === true){
+                            that._rubberbandStretch(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
                         }
-                    });
+                    };
 
-                    canvas.addEventListener('mouseup', function(event){
-                        var loc = that._winToCanvas(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
-                        that._restoreDrawingSurface();
-                        that._updateRubberband(loc, that.status.shapeType);
-                        that.status.dragging = false;
-                    });
+                    this.rubberbandEle.onmouseup = function(event){
+                        event.preventDefault();
+                        that._rubberbandEnd();
+                    };
 
-                    eraseAllButton.addEventListener('click', function(event){
-                        gtx.clearRect(0, 0, canvas.width, canvas.height);
-                        that._drawGrid('lightgray', 10, 10);
-                        that._saveDrawingSurface();
-                    });
+                    this.resetBtn.onclick = function(event){
+                        that.gtx.clearRect(0, 0, that.gtx.canvas.width, that.gtx.canvas.height);
+                        that.gtx.drawImage(that.image, 0, 0, that.canvas.width, that.canvas.height);
+                    };
 
-                    shapeType.addEventListener('change', function(event){
-                        that.status.shapeType = this.value;
-                    });
-
-                    strokeSelect.addEventListener('change', function(event){
-                        gtx.strokeStyle = this.value;
-                    });
-
-                    fillColorSelect.addEventListener('change', function(event){
-                        gtx.fillStyle = this.value;
-                    });
-
-                    guidewireCheckbox.addEventListener('change', function(event){
-                        that.status.guidewires = this.checked;
-                    });
-
-                    fillCheckbox.addEventListener('change', function(event){
-                        that.status.isFill = this.checked;
-                    });
+                    this.snapshotBtn.addEventListener('click', function(event){
+                        var dataUrl = '';
+                        if(this.value === 'Take Snapshot'){
+                            dataUrl = that.canvas.toDataURL();
+                            that.snapshotImageEle.src = dataUrl;
+                            that.snapshotImageEle.style.display = 'inline';
+                            that.canvas.style.display = 'none';
+                            this.value = 'Return to Canvas';
+                        }else{
+                            that.snapshotImageEle.style.display = 'none';
+                            that.canvas.style.display = 'inline';
+                            this.value = 'Take Snapshot';
+                        }
+                    }, false);*/
                 },
-                _drawGrid: function(color, stepx, stepy){
-                    var lineW = 0.5
-                    gtx.strokeStyle = color;
-                    for(var i = stepx + lineW; i < canvas.width; i += stepx){
-                        gtx.beginPath();
-                        gtx.moveTo(i, 0);
-                        gtx.lineTo(i, canvas.height);
-                        gtx.stroke();
-                    }
-                    for(var j = stepy + lineW; j < canvas.height; j += stepy){
-                        gtx.beginPath();
-                        gtx.moveTo(0, j);
-                        gtx.lineTo(canvas.width, j);
-                        gtx.stroke();
-                    }
+
+                init: function(){
+                    this._init();
                 },
-                _winToCanvas: function(x, y){
-                    var bbox = canvas.getBoundingClientRect();
-                    return {
-                        x: x - bbox.left * (canvas.width / bbox.width),
-                        y: y - bbox.top * (canvas.height/ bbox.height)
+
+                /********  功能函数  *******/
+                _rubberbandStart: function(x, y){
+                    this.mousedown.x = x;
+                    this.mousedown.y = y;
+                    this.rubberbandRectangle.left = this.mousedown.x;
+                    this.rubberbandRectangle.top = this.mousedown.y;
+                    this._moveRubberbandDiv();
+                    this._showRubberbandDiv();
+                    this.dragging = true;
+                },
+
+                _rubberbandStretch: function(x, y){
+                    this.rubberbandRectangle.left = x < this.mousedown.x ? x : this.mousedown.x;
+                    this.rubberbandRectangle.top = y < this.mousedown.y ? y : this.mousedown.y;
+
+                    this.rubberbandRectangle.width = Math.abs(x - this.mousedown.x);
+                    this.rubberbandRectangle.height = Math.abs(y - this.mousedown.y);
+
+                    this._moveRubberbandDiv();
+                    this._resizeRubberbandDiv();
+                },
+
+                _rubberbandEnd: function(){
+                    var bbox = this.canvas.getBoundingClientRect();
+                    try{
+                        this.gtx.drawImage(this.canvas, this.rubberbandRectangle.left - bbox.left, this.rubberbandRectangle.top - bbox.top,
+                                this.rubberbandRectangle.width, this.rubberbandRectangle.height, 0, 0, this.canvas.width, this.canvas.height);
+                    }catch(e){
+                        console.log(e);
+                    }
+                    this._resetRubberbandRectangle();
+                    this.rubberbandEle.style.width = 0;
+                    this.rubberbandEle.style.height = 0;
+                    this._hideRubberbandDiv();
+                    this.dragging = false;
+                },
+
+                _resetRubberbandRectangle: function(){
+                    this.rubberbandRectangle = {
+                        top: 0,
+                        left: 0,
+                        width: 0,
+                        height: 0
                     };
                 },
-                _saveDrawingSurface: function(){
-                    try{
-                        this.drawingSurfaceImageData.data = gtx.getImageData(0, 0, canvas.width, canvas.height);
-                    }catch(e){
-                        console.log('获取图像数据失败，' + e.message);
-                    }
-                },
-                _restoreDrawingSurface: function(){
-                    try{
-                        gtx.putImageData(this.drawingSurfaceImageData.data, 0, 0);
-                    }catch(e){
-                        console.log('还原图像数据失败，' + e.message);
-                    }
-                },
-                _updateMousedownData: function(loc){
-                    this.mousedown.x = loc.x;
-                    this.mousedown.y = loc.y;
-                },
-                _updateRubberbandRectangle: function(loc){
-                    this.rubberbandRect.width = Math.abs(loc.x - this.mousedown.x);
-                    this.rubberbandRect.height = Math.abs(loc.y - this.mousedown.y);
-                    if(loc.x > this.mousedown.x){
-                        this.rubberbandRect.left = this.mousedown.x;
-                    }else{
-                        this.rubberbandRect.left = loc.x;
-                    }
-                    if(loc.y > this.mousedown.y){
-                        this.rubberbandRect.top = this.mousedown.y;
-                    }else{
-                        this.rubberbandRect.top = loc.y;
-                    }
-                },
-                _drawRubberbandShape: function(loc){
-                    gtx.beginPath();
-                    gtx.moveTo(this.mousedown.x, this.mousedown.y);
-                    gtx.lineTo(loc.x, loc.y);
-                    gtx.stroke();
-                },
-                _drawDashedShape: function(pos1, pos2, dashedLength){
-                    dashedLength = dashedLength === undefined ? 5 : dashedLength;
-                    var trigonometric = this._calculateDistance(pos1, pos2),
-                        dashedNum = Math.floor(trigonometric.hypotenuse / dashedLength);
-                    
-                    gtx.beginPath();
-                    for(var i = 0; i < dashedNum; i++){ 
-                        gtx[i % 2 === 0 ? 'lineTo' : 'moveTo'](pos1.x + (trigonometric.adjacent / dashedNum) * i, pos1.y + (trigonometric.opposite / dashedNum) * i);
-                    }  
-                    gtx.stroke();
-                },
-                _calculateDistance: function(pos1, pos2){
-                    var oppo = pos2.y - pos1.y,
-                        adja = pos2.x - pos1.x;
-                    return {
-                        opposite: oppo,
-                        adjacent: adja,
-                        hypotenuse: Math.sqrt(oppo * oppo + adja * adja)
-                    };
-                },
-                _drawCircleShape: function(loc){
-                    var radius, h = this.rubberbandRect.height, w = this.rubberbandRect.width;                     
-                    radius = Math.sqrt(h * h + w * w);                    
-                    gtx.beginPath();
-                    gtx.arc(this.mousedown.x, this.mousedown.y, radius, 0, Math.PI * 2, false);
-                    gtx.stroke();
-                    if(this.status.isFill){
-                        gtx.fill();
-                    }
-                },
-                _drawCornerShape: function(mousedown, loc, cornerRadius){
-                    var cornerX = mousedown.x, cornerY = mousedown.y, width = loc.x - mousedown.x, height = loc.y - mousedown.y;
-                    cornerRadius = cornerRadius === undefined ? 40 : cornerRadius;
 
-                    gtx.beginPath();
-                    width > 0 ? gtx.moveTo(cornerX + cornerRadius, cornerY) : gtx.moveTo(cornerX - cornerRadius, cornerY);
-                    gtx.arcTo(cornerX + width, cornerY, cornerX + width, cornerY + height, cornerRadius);
-                    gtx.arcTo(cornerX + width, cornerY + height, cornerX, cornerY + height, cornerRadius);
-                    gtx.arcTo(cornerX, cornerY + height, cornerX, cornerY, cornerRadius);
-                    width > 0 ? gtx.arcTo(cornerX, cornerY, cornerX + cornerRadius, cornerY, cornerRadius) : gtx.arcTo(cornerX, cornerY, cornerX - cornerRadius, cornerY, cornerRadius);
-                    gtx.stroke();
-                    if(this.status.isFill){
-                        gtx.fill();
+                _moveRubberbandDiv: function(){
+                    this.rubberbandEle.style.top = this.rubberbandRectangle.top + 'px';
+                    this.rubberbandEle.style.left = this.rubberbandRectangle.left + 'px';
+                },
+
+                _resizeRubberbandDiv: function(){
+                    this.rubberbandEle.style.width = this.rubberbandRectangle.width + 'px';
+                    this.rubberbandEle.style.height = this.rubberbandRectangle.height + 'px';
+                },
+
+                _hideRubberbandDiv: function(){
+                    this.rubberbandEle.style.display = 'none';
+                },
+
+                _showRubberbandDiv: function(){
+                    this.rubberbandEle.style.display = 'inline';
+                }               
+            };
+
+            function newRubberband(){
+                var rubberband = new Rubberband();
+                rubberband.init();
+                return rubberband;
+            }
+
+            newRubberband();
+
+            /********* 橡皮擦对象 *********/
+            function Eraser(w, h){
+                this.dragging = false;
+                this.showing = false;
+                this.width = w || 20;
+                this.height = h || 20;
+            }
+            Eraser.prototype = {
+                canvas: document.getElementById('myCanvas'),
+                gtx: document.getElementById('myCanvas').getContext('2d'),
+                eraserEle: document.getElementById('eraserEle'),
+                eraserBtn: document.getElementsByClassName('eraserBtn')[0],
+                restoreBtn: document.getElementsByClassName('restoreBtn')[0],
+                constructor: Eraser,
+                eraserRectangle: {},
+                mousedown: {},
+                cacheImages: [],
+                init: function(){
+                    var that = this,
+                        docEle = document.body;                    
+
+                    this.eraserBtn.addEventListener('click', function(event){
+                        event.preventDefault();
+                        that._initEraser();
+                    }, false);
+
+                    this.restoreBtn.addEventListener('click', function(event){
+                        event.preventDefault();
+                        that._restoreImage();
+                    }, false);
+
+                    this.eraserEle.addEventListener('mousedown', function(event){
+                        event.preventDefault();
+                        that._eraserStart(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
+                    }, false);
+
+                    this.canvas.addEventListener('mousemove', function(event){
+                        event.preventDefault();                        
+                        that._eraserStretch(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
+                    }, false);
+
+                    this.eraserEle.addEventListener('mouseup', function(event){
+                        event.preventDefault();
+                        that._eraserEnd();
+                    }, false);
+                },
+                _initEraser: function(){
+                    this.eraserRectangle.left = this.mousedown.x = 12;
+                    this.eraserRectangle.top = this.mousedown.y = 48;
+                    this.eraserEle.style.backgroundColor = '#bbb';
+                    this.eraserEle.style.width = this.width + 'px';
+                    this.eraserEle.style.height = this.height + 'px';
+                    this.eraserEle.style.top = '4em';
+                    this.eraserEle.style.left = '12px';
+                    this._showEraser();
+                    this.showing = true;
+                },
+                _eraserStart: function(x, y){
+                    this._cacheImage();
+                    this._getRectangle(x, y);
+                    this.eraserEle.style.backgroundColor = '#ddd';
+                    this._moveEraser();                    
+                    this.dragging = true;
+                },
+                _eraserStretch: function(x, y){                    
+                    this._getRectangle(x, y);
+                    this._moveEraser();
+                    if(this.dragging === true){                        
+                        this._cleanCanvas(x - this.eraserRectangle.offsetX, y - this.eraserRectangle.offsetY, this.width, this.height);
                     }
                 },
-                _updateRubberband: function(loc, shapeType){
-                    this._updateRubberbandRectangle(loc);
-                    switch(shapeType){ 
-                        case 'dashed':                       
-                            this._drawDashedShape(this.mousedown, loc, 3);
-                            break;
-                        case 'line':
-                            this._drawRubberbandShape(loc);
-                            break;
-                        case 'circle':
-                            this._drawCircleShape(loc);
-                            break;
-                        case 'corner':
-                            this._drawCornerShape(this.mousedown, loc);
-                            break;
+                _eraserEnd: function(x, y){
+                    this.eraserEle.style.backgroundColor = '#bbb';
+                    this.dragging = false;
+                },
+                _cacheImage: function(){
+                    var img = new Image();
+                    try{
+                        img.src = this.canvas.toDataURL();
+                        this.cacheImages.unshift(img);
+                    }catch(e){
+                        console.log('缓存失败, ' + e.message);
                     }                    
                 },
-                _drawGuidewires: function(x, y){
-                    gtx.save();
-                    gtx.strokeStyle = 'rgba(0,0,230,0.4)';
-                    gtx.lineWidth = 0.5;
-                    this._drawVerticalLine(x);
-                    this._drawHorizontalLine(y);
-                    gtx.restore();
+                _restoreImage: function(){
+                    var img = this.cacheImages.shift();
+                    if(img){
+                        this.gtx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+                    }else{
+                        console.log('可还原的图像为空');
+                    }
                 },
-                _drawVerticalLine: function(x){
-                    gtx.beginPath();
-                    gtx.moveTo(x + 0.5, 0);
-                    gtx.lineTo(x + 0.5, canvas.height);
-                    gtx.stroke();
+                _getRectangle: function(x, y){
+                    var bbox = this.canvas.getBoundingClientRect(),
+                        minWidth = bbox.right - this.width - 2,
+                        minHieght = bbox.bottom - this.height - 2;
+                    this.eraserRectangle.left = x > minWidth ? minWidth : x;
+                    this.mousedown.x = this.eraserRectangle.left;
+                    this.eraserRectangle.top = y > minHieght ? minHieght : y;
+                    this.mousedown.y = this.eraserRectangle.top;
+                    this.eraserRectangle.offsetX = bbox.left;
+                    this.eraserRectangle.offsetY = bbox.top;
                 },
-                _drawHorizontalLine: function(y){
-                    gtx.beginPath();
-                    gtx.moveTo(0, y + 0.5);
-                    gtx.lineTo(canvas.width, y + 0.5);
-                    gtx.stroke();
+                _moveEraser: function(){
+                    this.eraserEle.style.top = this.eraserRectangle.top + 'px';
+                    this.eraserEle.style.left = this.eraserRectangle.left + 'px';                    
+                },
+                _cleanCanvas: function(x, y, w, h){
+                    this.gtx.clearRect(x, y, w, h);
+                },
+                _showEraser: function(){
+                    this.eraserEle.style.display = 'inline';
+                },
+                _hideEraser: function(){
+                    this.eraserEle.style.display = 'none';
                 }
             };
 
-            var rubberDrawing = new RubberDrawing();
+            (new Eraser(10, 10)).init();
         })();
         </script>
     </body>
