@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>随机生成中文名字</title>
+        <link rel="stylesheet" href="http://cdn.bootcss.com/bootstrap/3.3.2/css/bootstrap.min.css">
+    </head>
+    <body>
+        <div class="form-inline" id="controls">
+            <input class="form-control" id="firstName" type="text" placeholder="请输入姓氏">
+            <select class="form-control" name="nameLength" id="nameLength">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+            </select>
+            <button class="btn btn-default" id="generateBtn">生成名字</button>
+        </div>
+        <canvas id="myCanvas" width="800" height="550">本浏览器不支持canvas</canvas>
+        <script>
+        (function(){
+            var doc = document,
+                docEle = document.body,
+                canvas = doc.getElementById('myCanvas'),
+                gtx = canvas.getContext('2d'),
+                nameLength = doc.getElementById('nameLength'),
+                generateBtn = doc.getElementById('generateBtn'),
+                firstName = doc.getElementById('firstName');
+
+            function RandomChineseName(){
+                this.init();
+            }
+            RandomChineseName.prototype = {
+                constructor: RandomChineseName,
+                init: function(){
+                    var that = this;
+                    generateBtn.addEventListener('click', function(event){
+                        var name = that.generateName();
+                        console.log(name);
+                        gtx.clearRect(0, 0, canvas.width, canvas.height);
+                        gtx.font = "Bold 36px cursive";
+                        gtx.fillStyle = "#008600"; 
+                        gtx.fillText(name, 0, 60);
+                    });
+                },
+                randomChart: function(){
+                    var str = "%u" + Math.round((Math.random() * 20901) + 19968).toString(16);
+                    return unescape(str);
+                },
+                generateName: function(){
+                    var l = nameLength.value, str = '';
+                    for(var i = 0; i < l; i++){
+                        str += this.randomChart();
+                    }
+                    return '你的随机姓名：' + firstName.value + str;
+                }
+            };
+            var randomChineseName = new RandomChineseName();
+        })();
+        </script>
+    </body>
+</html>
