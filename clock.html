@@ -34,6 +34,7 @@
                     }, 1000);
                 },
                 drawClock: function(){
+                    gtx.clearRect(0, 0, canvas.width, canvas.height);       //方法1：每次清理上一秒图形
                     this.drawCircle();
                     this.drawNumerals();
                     this.drawCenter();
@@ -57,23 +58,26 @@
                     gtx.arc(canvas.width / 2, canvas.height / 2, 5, 0, Math.PI * 2, true);
                     gtx.fill();
                 },
-                _drawHand: function(loc, isHour){
+                _drawHand: function(loc, type){
                     var angle = (Math.PI*2)*(loc/60)-Math.PI/2,
-                        handRadius = isHour ? this.RADIUS - this.HAND_TRUNCATION - this.HOUR_HAND_TRUNCATION : this.RADIUS - this.HAND_TRUNCATION;
+                        handRadius = type === 'hour' ? this.RADIUS - this.HAND_TRUNCATION - this.HOUR_HAND_TRUNCATION : this.RADIUS - this.HAND_TRUNCATION;
+                    gtx.save();
+                    gtx.beginPath();
+                    if(type === 'second') gtx.strokeStyle = 'red'; 
                     gtx.moveTo(canvas.width/2, canvas.height/2);
                     gtx.lineTo(canvas.width/2+Math.cos(angle)*handRadius, canvas.height/2+Math.sin(angle)*handRadius);
                     gtx.stroke();
+                    gtx.restore();
                 },
                 drawHands: function(){
-                    this.cacheImage.imageData && gtx.putImageData(this.cacheImage.imageData, 0, 0);
-                    this.cacheImage.imageData = gtx.getImageData(0, 0, canvas.width, canvas.height);
+                    /*this.cacheImage.imageData && gtx.putImageData(this.cacheImage.imageData, 0, 0);
+                    this.cacheImage.imageData = gtx.getImageData(0, 0, canvas.width, canvas.height);*/// 方法2：每次清理上一秒图形
                     var date = new Date,
                         hour = date.getHours();
                     hour = hour > 12 ? hour - 12 : hour;
-                    this._drawHand(hour*5 + (date.getMinutes()/60)*5, true);
-                    this._drawHand(date.getMinutes(), false);
-                    this._drawHand(date.getSeconds(), false);
-                    gtx.restore();
+                    this._drawHand(hour*5 + (date.getMinutes()/60)*5, 'hour');
+                    this._drawHand(date.getMinutes(), 'minute');
+                    this._drawHand(date.getSeconds(), 'second');
                 }
             };
 
