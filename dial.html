@@ -118,7 +118,6 @@
                     gtx.save();                    
                     gtx.strokeStyle = 'rgba(0,0,0,0.2)';
                     gtx.beginPath();
-                    gtx.moveTo(this.circle.x + this.circle.radius + this.RING_INNER_RADIUS, this.circle.y);     //避免两圆之间的直接连线
                     gtx.arc(this.circle.x, this.circle.y, this.circle.radius + this.RING_INNER_RADIUS, 0, Math.PI*2, false);
                     gtx.fillStyle = offCharts === 'red' ? 'rgba(255,0,0,0.4)' : offCharts === 'yellow' ? 'rgba(255,255,0,0.4)' : 'rgba(0,128,0,0.4)';
                     gtx.stroke();
@@ -132,7 +131,8 @@
                     gtx.shadowOffsetY = 1;
                     gtx.shadowBlue = 2;
                     gtx.strokeStyle = this.TRACKING_DIAL_STROKING_STYLE;
-                    gtx.fillStyle = 'rgba(100,140,120,0.7)';                    
+                    gtx.fillStyle = 'rgba(100,140,120,0.7)';
+                    gtx.moveTo(this.circle.x + this.circle.radius + this.RING_OUTER_RADIUS, this.circle.y);     //避免两圆之间的直接连线
                     gtx.arc(this.circle.x, this.circle.y, this.circle.radius + this.RING_OUTER_RADIUS, 0, Math.PI*2, true);
                     gtx.stroke();
                     gtx.fill();                  
