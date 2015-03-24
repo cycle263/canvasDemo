@@ -13,9 +13,7 @@
                 canvas = doc.getElementById('myCanvas'),
                 gtx = canvas.getContext('2d');
 
-            function DrawDial(){
-                this.init();
-            }
+            function DrawDial(){}
             DrawDial.prototype = {
                 constructor: DrawDial,
                 CENTROID_RADIUS: 10,
@@ -39,20 +37,24 @@
                     radius: 180
                 },
 
-                init: function(){
-                    var loc = {x: this.circle.x, y: this.circle.y};
+                init: function(angle){
+                    var offCharts = angle >= 360 ? 'red' : angle >= 100 && angle < 360 ? 'yellow' : 'green';
+                    angle = angle >= 360 ? 360 : angle;
+
                     gtx.shadowColor = 'rgba(0,0,0,0.4)';
                     gtx.shadowOffsetX = 1;
                     gtx.shadowOffsetY = 1;
                     gtx.shadowBlue = 2;
                     gtx.textAlign = 'center';
                     gtx.textBaseline = 'middle';
+                    gtx.clearRect(0, 0, canvas.width, canvas.height);
+                    gtx.beginPath();
 
                     this.drawRotateText(30, 50);
                     this.drawGrid('lightgray', 10, 10);
                     this.drawCentroid();
-                    this.drawCentroidGuidewire(loc);
-                    this.drawRing();
+                    this.drawCentroidGuidewire(angle);                    
+                    this.drawRing(offCharts);
                     this.drawTickInnerCircle();
                     this.drawTicks();
                     this.drawAnnotations();
@@ -90,13 +92,12 @@
                     gtx.fill();
                     gtx.restore();
                 },
-                drawCentroidGuidewire: function(loc){
-                    var angle = -Math.PI/4, 
-                        radius = this.circle.radius + this.RING_OUTER_RADIUS,
+                drawCentroidGuidewire: function(angle){
+                    var radius = this.circle.radius + this.RING_OUTER_RADIUS,
                         endpt;
+                    angle = angle * Math.PI / 180 - Math.PI * 1.5,
 
-                    endpt = (loc.x >= this.circle.x) ? {x: this.circle.x + radius * Math.cos(angle), y: this.circle.y + radius * Math.sin(angle)} :
-                        {x: this.circle.x - radius * Math.cos(angle), y: this.circle.y - radius * Math.sin(angle)};
+                    endpt = {x: this.circle.x + radius * Math.cos(angle), y: this.circle.y + radius * Math.sin(angle)};
                     gtx.save();
                     gtx.strokeStyle = this.GUIDEWIRE_STROKE_STYLE;
                     gtx.fillStyle = this.GUIDEWIRE_FILL_STYLE;
@@ -112,24 +113,28 @@
                     gtx.stroke();
                     gtx.restore();
                 },
-                drawRing: function(){
-                    this.drawRingOuterCircle();
+                drawRing: function(offCharts){
+                    gtx.save();                    
                     gtx.strokeStyle = 'rgba(0,0,0,0.2)';
+                    gtx.beginPath();
                     gtx.moveTo(this.circle.x + this.circle.radius + this.RING_INNER_RADIUS, this.circle.y);     //避免两圆之间的直接连线
                     gtx.arc(this.circle.x, this.circle.y, this.circle.radius + this.RING_INNER_RADIUS, 0, Math.PI*2, false);
-                    gtx.fillStyle = 'rgba(100,140,230,0.2)';
+                    gtx.fillStyle = offCharts === 'red' ? 'rgba(255,0,0,0.4)' : offCharts === 'yellow' ? 'rgba(255,255,0,0.4)' : 'rgba(0,128,0,0.4)';
                     gtx.stroke();
                     gtx.fill();
+                    this.drawRingOuterCircle();
+                    gtx.restore();
                 },
                 drawRingOuterCircle: function(){
-                    gtx.shadowColor = 'rgba(0,0,0,0.7)';
+                    gtx.shadowColor = 'rgba(0,0,0,0.4)';
                     gtx.shadowOffsetX = 1;
                     gtx.shadowOffsetY = 1;
                     gtx.shadowBlue = 2;
                     gtx.strokeStyle = this.TRACKING_DIAL_STROKING_STYLE;
-                    gtx.beginPath();
+                    gtx.fillStyle = 'rgba(100,140,120,0.7)';                    
                     gtx.arc(this.circle.x, this.circle.y, this.circle.radius + this.RING_OUTER_RADIUS, 0, Math.PI*2, true);
                     gtx.stroke();
+                    gtx.fill();                  
                 },
                 drawTickInnerCircle: function(){
                     gtx.save();
@@ -140,7 +145,7 @@
                     gtx.restore();
                 },
                 drawTick: function(angle, radius, cnt){
-                    var tickWidth = cnt % 4 === 0 ? this.TICK_WIDTH : this.TICK_WIDTH / 2;
+                    var tickWidth = cnt % 5 === 0 ? this.TICK_WIDTH : this.TICK_WIDTH / 2;
                     gtx.beginPath();
                     gtx.moveTo(this.circle.x + Math.cos(angle) * (radius - tickWidth), this.circle.y + Math.sin(angle) * (radius - tickWidth));
                     gtx.lineTo(this.circle.x + Math.cos(angle) * (radius), this.circle.y + Math.sin(angle) * (radius));
@@ -150,7 +155,7 @@
                 drawTicks: function(){
                     var radius = this.circle.radius + this.RING_INNER_RADIUS,
                         ANGLE_MAX = 2 * Math.PI, tickWidth,
-                        ANGLE_DELTA = Math.PI / 64;
+                        ANGLE_DELTA = Math.PI / 30;
                     gtx.save();
                     for(var angle = 0, cnt = 0; angle < ANGLE_MAX; angle += ANGLE_DELTA, cnt++){
                         this.drawTick(angle, radius, cnt);
@@ -163,7 +168,7 @@
                     gtx.fillStyle = this.ANNOTATIONS_FILL_STYLE;
                     gtx.font = this.ANNOTATIONS_TEXT_SIZE + 'px Helvetica';
 
-                    for(var angle = -1.5 * Math.PI; angle < 0.5 * Math.PI; angle += Math.PI / 8){
+                    for(var angle = -4 * Math.PI / 3; angle < Math.PI / 2; angle += Math.PI / 6){
                         gtx.beginPath();
                         gtx.fillText(((angle + 1.5 * Math.PI) * 180 / Math.PI).toFixed(0), this.circle.x + Math.cos(angle) * (radius - this.TICK_WIDTH * 2), this.circle.y + Math.sin(angle) * (radius - this.TICK_WIDTH * 2));
                     }
@@ -191,9 +196,11 @@
                 xhr.send(null);
             }
 
-            createXHR('http://mobile.weather.com.cn/data/air/101270101.html', function(xhr){
+            /*createXHR('http://mobile.weather.com.cn/data/air/101270101.html', function(xhr){
                 console.log(xhr);
-            });
+            });*/
+
+            drawDial.init(190);
         })();
         </script>
     </body>
