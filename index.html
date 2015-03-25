@@ -41,7 +41,6 @@
             </select></label>
             <label>Filled: <input id="fillCheckbox" type="checkbox" checked="checked" /></label>
             <input id="eraseAllButton" type="button" value="Erase all" />
-            <a href="rubber.html">rubber</a>
         </div>
         <script>
         (function(){
@@ -79,10 +78,11 @@
                         that._saveDrawingSurface();
                         that._updateMousedownData(loc);
                         that.status.dragging = true;
-                    });
+                    }, false);
 
                     canvas.addEventListener('mousemove', function(event){
                         var loc;
+                        //console.log(event);
                         if(that.status.dragging){
                             event.preventDefault();
                             loc = that._winToCanvas(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
@@ -92,40 +92,40 @@
                                 that._drawGuidewires(loc.x, loc.y);
                             }
                         }
-                    });
+                    }, false);
 
                     canvas.addEventListener('mouseup', function(event){
                         var loc = that._winToCanvas(event.clientX + docEle.scrollLeft, event.clientY + docEle.scrollTop);
                         that._restoreDrawingSurface();
                         that._updateRubberband(loc, that.status.shapeType);
                         that.status.dragging = false;
-                    });
+                    }, false);
 
                     eraseAllButton.addEventListener('click', function(event){
                         gtx.clearRect(0, 0, canvas.width, canvas.height);
                         that._drawGrid('lightgray', 10, 10);
                         that._saveDrawingSurface();
-                    });
+                    }, false);
 
                     shapeType.addEventListener('change', function(event){
                         that.status.shapeType = this.value;
-                    });
+                    }, false);
 
                     strokeSelect.addEventListener('change', function(event){
                         gtx.strokeStyle = this.value;
-                    });
+                    }, false);
 
                     fillColorSelect.addEventListener('change', function(event){
                         gtx.fillStyle = this.value;
-                    });
+                    }, false);
 
                     guidewireCheckbox.addEventListener('change', function(event){
                         that.status.guidewires = this.checked;
-                    });
+                    }, false);
 
                     fillCheckbox.addEventListener('change', function(event){
                         that.status.isFill = this.checked;
-                    });
+                    }, false);
                 },
                 _drawGrid: function(color, stepx, stepy){
                     var lineW = 0.5
