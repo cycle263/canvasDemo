@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body{padding: 0;margin: 0;}
+        </style>
+    </head>
+    <body>
+        <div>
+            <select name="" id="sideSelected">
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+        </div>
+        <canvas id="myCanvas" width="600" height="400"></canvas>
+        <script>
+        (function(){
+            var doc = document,
+                bodyEle = doc.body,
+                canvas = doc.getElementById('myCanvas'),
+                control = doc.getElementById('control'),
+                sideSelected = doc.getElementById('sideSelected'),
+                gtx = canvas.getContext('2d');
+
+            function DrawPolygon(sides, startAngle, centerPoint){
+                this.sides = sides || 5;
+                this.startAngle = startAngle || 0;
+                this.centerPoint = centerPoint || {x:0,y:0,radius:0};
+                this.init();
+            }
+            DrawPolygon.prototype = {
+                constructor: DrawPolygon,
+                mousePosition: {},
+                caches: {},
+                init: function(){                  
+                    this.bindEvents();
+                },
+                bindEvents: function(){
+                    var that = this;
+
+                    canvas.addEventListener('mousedown', function(event){
+                        event.preventDefault();
+                        that.updateCenterPoint(event.clientX + bodyEle.scrollLeft, event.clientY + bodyEle.scrollTop);
+                        that.saveImage();
+                        that.caches.dragging = true;
+                    }, false);
+                    canvas.addEventListener('mousemove', function(event){
+                        event.preventDefault();
+                        if(that.caches.dragging === true){
+                            that.restoreImage();
+                            that.saveImage();
+                            that.updateRadius(event.clientX + bodyEle.scrollLeft, event.clientY + bodyEle.scrollTop);
+                            that.drawPolygon();
+                        }
+                    }, false);
+                    canvas.addEventListener('mouseup', function(event){
+                        that.restoreImage();
+                        that.updateRadius(event.clientX + bodyEle.scrollLeft, event.clientY + bodyEle.scrollTop);
+                        that.drawPolygon();
+                        that.caches.dragging = false;
+                    },false);
+                    sideSelected.addEventListener('change', function(event){
+                        that.sides = this.value - 0;
+                    }, false);
+                },
+                getPolygonPoints: function(){
+                    var points = [], angle = this.startAngle || 0;
+                    for(var i = 0; i < this.sides; i++, angle += 2 * Math.PI / this.sides){
+                        points.push({x: this.centerPoint.x + this.centerPoint.radius * Math.sin(angle), y: this.centerPoint.y + this.centerPoint.radius * Math.cos(angle)});
+                    }
+                    return points;
+                },
+                drawPolygon: function(){
+                    var points = this.getPolygonPoints();
+                    gtx.beginPath();
+                    gtx.moveTo(points[0].x, points[0].y);
+                    for(var i = 1; i < this.sides; i++){
+                        gtx.lineTo(points[i].x, points[i].y)
+                    }
+                    gtx.closePath();
+                    gtx.stroke();
+                },
+                updateCenterPoint: function(x, y){
+                    this.centerPoint.x = x;
+                    this.centerPoint.y = y;
+                },
+                updateRadius: function(x, y){
+                    var a = x - this.centerPoint.x,
+                        b = y - this.centerPoint.y;
+                    this.centerPoint.radius = Math.sqrt(a * a + b * b);
+                    this.startAngle = Math.atan(a/b);
+                },
+                restoreImage: function(){
+                    try{
+                        gtx.putImageData(this.caches.imageData, 0, 0);
+                    }catch(e){
+                        console.log('还原图像数据失败，' + e.message);
+                    }
+                },
+                saveImage: function(){
+                    try{
+                        this.caches.imageData = gtx.getImageData(0, 0, canvas.width, canvas.height);
+                    }catch(e){
+                        console.error(e.message);
+                    }
+                }
+            };
+
+            var polygon = new DrawPolygon(sideSelected.value - 0);
+
+        })();
+        </script>
+    </body>
+</html>
