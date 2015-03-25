@@ -15,7 +15,7 @@
                 <option value="7">7</option>
                 <option value="8">8</option>
                 <option value="9">9</option>
-                <option value="10">10</option>
+                <option value="10" selected="">10</option>
             </select>
         </div>
         <canvas id="myCanvas" width="600" height="400"></canvas>
@@ -72,7 +72,7 @@
                 getPolygonPoints: function(){
                     var points = [], angle = this.startAngle || 0;
                     for(var i = 0; i < this.sides; i++, angle += 2 * Math.PI / this.sides){
-                        points.push({x: this.centerPoint.x + this.centerPoint.radius * Math.sin(angle), y: this.centerPoint.y + this.centerPoint.radius * Math.cos(angle)});
+                        points.push({x: this.centerPoint.x + this.centerPoint.radius * Math.sin(angle) - canvas.offsetLeft, y: this.centerPoint.y + this.centerPoint.radius * Math.cos(angle) - canvas.offsetTop});
                     }
                     return points;
                 },
